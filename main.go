@@ -65,7 +65,7 @@ type gandiDNSProviderSolver struct {
 type gandiDNSProviderConfig struct {
 	// These fields will be set by users in the
 	// `issuer.spec.acme.dns01.providers.webhook.config` field.
-	APIKeySecretRef cmmeta.SecretKeySelector `json:"apiKeySecretRef"`
+	TokenSecretRef cmmeta.SecretKeySelector `json:"apiKeySecretRef"`
 }
 
 // Name is used as the name for this DNS solver when referencing it on the ACME
@@ -101,13 +101,13 @@ func (c *gandiDNSProviderSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 
 	klog.V(6).Infof("decoded configuration %v", cfg)
 
-	apiKey, err := c.getApiKey(&cfg, ch.ResourceNamespace)
+	token, err := c.getPat(&cfg, ch.ResourceNamespace)
 	if err != nil {
 		return fmt.Errorf("unable to get API key: %v", err)
 	}
 
 	clientcfg := &config.Config{
-		APIKey: *apiKey,
+		PersonalAccessToken: *token,
 		Debug:  false,
 		DryRun: false,
 	}
@@ -157,13 +157,13 @@ func (c *gandiDNSProviderSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 
 	klog.V(6).Infof("decoded configuration %v", cfg)
 
-	apiKey, err := c.getApiKey(&cfg, ch.ResourceNamespace)
+	token, err := c.getPat(&cfg, ch.ResourceNamespace)
 	if err != nil {
 		return fmt.Errorf("unable to get API key: %v", err)
 	}
 
 	clientcfg := &config.Config{
-		APIKey: *apiKey,
+		PersonalAccessToken: *token,
 		Debug:  true,
 		DryRun: false,
 	}
@@ -231,23 +231,23 @@ func (c *gandiDNSProviderSolver) getDomainAndEntry(ch *v1alpha1.ChallengeRequest
 	return entry, domain
 }
 
-// Get Gandi API key from Kubernetes secret.
-func (c *gandiDNSProviderSolver) getApiKey(cfg *gandiDNSProviderConfig, namespace string) (*string, error) {
-	secretName := cfg.APIKeySecretRef.LocalObjectReference.Name
+// Get Gandi Personal Access Token from Kubernetes secret.
+func (c *gandiDNSProviderSolver) getPat(cfg *gandiDNSProviderConfig, namespace string) (*string, error) {
+	secretName := cfg.TokenSecretRef.LocalObjectReference.Name
 
-	klog.V(6).Infof("try to load secret `%s` with key `%s`", secretName, cfg.APIKeySecretRef.Key)
+	klog.V(6).Infof("try to load secret `%s` with key `%s`", secretName, cfg.TokenSecretRef.Key)
 
 	sec, err := c.client.CoreV1().Secrets(namespace).Get(context.Background(), secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to get secret `%s`; %v", secretName, err)
 	}
 
-	secBytes, ok := sec.Data[cfg.APIKeySecretRef.Key]
+	secBytes, ok := sec.Data[cfg.TokenSecretRef.Key]
 	if !ok {
-		return nil, fmt.Errorf("key %q not found in secret \"%s/%s\"", cfg.APIKeySecretRef.Key,
-			cfg.APIKeySecretRef.LocalObjectReference.Name, namespace)
+		return nil, fmt.Errorf("key %q not found in secret \"%s/%s\"", cfg.TokenSecretRef.Key,
+			cfg.TokenSecretRef.LocalObjectReference.Name, namespace)
 	}
 
-	apiKey := string(secBytes)
-	return &apiKey, nil
+	token := string(secBytes)
+	return &token, nil
 }
