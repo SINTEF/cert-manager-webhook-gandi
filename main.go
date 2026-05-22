@@ -68,6 +68,11 @@ type gandiDNSProviderConfig struct {
 	// `issuer.spec.acme.dns01.providers.webhook.config` field.
 	APIKeySecretRef cmmeta.SecretKeySelector `json:"apiKeySecretRef"`
 	PatSecretRef    cmmeta.SecretKeySelector `json:"patSecretRef"`
+	// SharingID is the Gandi organisation UUID required when the domain is owned
+	// by a resellee sub-organisation. Without it the LiveDNS API returns 404 for
+	// write operations on resellee domains even with a valid reseller PAT.
+	// Obtain it from: GET https://api.gandi.net/v5/organization/organizations
+	SharingID string `json:"sharingId,omitempty"`
 }
 
 // Name is used as the name for this DNS solver when referencing it on the ACME
@@ -250,7 +255,7 @@ func (c *gandiDNSProviderSolver) getSecret(keySelector *cmmeta.SecretKeySelector
 
 // Init Client configuration
 func (c *gandiDNSProviderSolver) initClientConfigCredentials(cfg *gandiDNSProviderConfig, namespace string) (*config.Config, error) {
-	clientcfg := &config.Config{}
+	clientcfg := &config.Config{SharingID: cfg.SharingID}
 	//
 	apiKey, err := c.getSecret(&cfg.APIKeySecretRef, namespace)
 	if err != nil {
