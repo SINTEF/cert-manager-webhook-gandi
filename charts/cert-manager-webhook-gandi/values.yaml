@@ -9,7 +9,7 @@ certManager:
   serviceAccountName: cert-manager
 image:
   # -- Image name
-  repository: ghcr.io/sintef/cert-manager-webhook-gandi
+  repository: ghcr.io/freuds/cert-manager-webhook-gandi
   # -- Image tag (default to Chart's appVersion)
   tag: ""
   # -- Image pull policy
